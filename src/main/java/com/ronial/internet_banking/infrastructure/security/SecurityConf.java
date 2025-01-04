@@ -41,14 +41,13 @@ public class SecurityConf {
                 cors(conf -> conf.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable);
         http.
-                authorizeHttpRequests(authorize -> {
-                    authorize.anyRequest().permitAll();
-                })
+                authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .exceptionHandling(exception -> {
-                    exception.authenticationEntryPoint(new BearerTokenAuthenticationEntryPoint())
-                            .accessDeniedHandler(new BearerTokenAccessDeniedHandler());
-                })
+                .exceptionHandling(exception ->
+                    exception
+                            .authenticationEntryPoint(new BearerTokenAuthenticationEntryPoint())
+                            .accessDeniedHandler(new BearerTokenAccessDeniedHandler())
+                )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
@@ -57,8 +56,7 @@ public class SecurityConf {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowCredentials(true); // Cho phép gửi cookie
-        configuration.addAllowedOrigin("http://localhost:3000");
-        configuration.addAllowedOrigin("http://localhost:5173");
+        configuration.addAllowedOrigin("*");
         configuration.addAllowedHeader("*");
         configuration.addAllowedMethod("*");
 
@@ -66,11 +64,14 @@ public class SecurityConf {
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
+
     @Bean
     public DaoAuthenticationProvider daoAuthenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
         provider.setPasswordEncoder(passwordEncoder);
         provider.setUserDetailsService(userService);
-        return  provider;
-    };
+        return provider;
+    }
+
+    ;
 }

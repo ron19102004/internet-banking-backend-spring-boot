@@ -12,6 +12,6 @@ public class ResponseLayout<T> {
     private boolean success;
     private int code;
     public ResponseEntity<ResponseLayout<T>> toResponseEntity() {
-        return ResponseEntity.ok().body(this);
+        return ResponseEntity.status(code).body(this);
     }
 }

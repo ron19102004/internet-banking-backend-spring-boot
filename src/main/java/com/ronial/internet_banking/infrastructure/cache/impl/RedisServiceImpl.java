@@ -4,13 +4,19 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ronial.internet_banking.infrastructure.cache.RedisService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
+@Slf4j
 public class RedisServiceImpl implements RedisService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final ObjectMapper objectMapper;
@@ -58,5 +64,20 @@ public class RedisServiceImpl implements RedisService {
       } catch (Exception e) {
           throw new RuntimeException("Failed to deserialize object", e);
       }
+    }
+    @Override
+    public List<String> scanKeys(String pattern) {
+        List<String> keys = new ArrayList<>();
+        redisTemplate.execute((RedisConnection connection) -> {
+            Cursor<byte[]> cursor = connection.scan(
+                    ScanOptions.scanOptions()
+                            .match(pattern) // Đặt pattern, ví dụ: "redis:ip:*"
+                            .count(100)    // Gợi ý số lượng key trong mỗi lần quét
+                            .build()
+            );
+            cursor.forEachRemaining(key -> keys.add(new String(key)));
+            return null; // Không cần trả về kết quả từ execute
+        });
+        return keys;
     }
 }

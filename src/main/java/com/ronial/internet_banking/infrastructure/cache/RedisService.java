@@ -7,4 +7,5 @@ public interface RedisService {
     <E> void setList(String key, List<E> ls);
     <E> void set(String key, E e);
     <E> E get(String key);
+    List<String> scanKeys(String pattern);
 }

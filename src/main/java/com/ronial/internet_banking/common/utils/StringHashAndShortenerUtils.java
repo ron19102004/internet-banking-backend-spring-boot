@@ -7,7 +7,7 @@ import java.security.MessageDigest;
 
 @UtilityClass
 public class StringHashAndShortenerUtils {
-    public  String hashAndShorten(String input) {
+    public String hashAndShorten(String input) {
         try {
             // Sử dụng SHA-256 để tạo băm từ chuỗi
             MessageDigest digest = MessageDigest.getInstance("SHA-256");

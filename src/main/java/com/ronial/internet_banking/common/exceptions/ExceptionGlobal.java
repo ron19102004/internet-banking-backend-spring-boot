@@ -19,6 +19,11 @@ import java.util.stream.Collectors;
 @ControllerAdvice
 @Slf4j
 public class ExceptionGlobal {
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<String> handleException(Exception ex) {
+        ex.printStackTrace();
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ex.getMessage());
+    }
     @ExceptionHandler(ApplicationException.class)
     public ResponseEntity<ResponseLayout<Object>> handler(ApplicationException e) {
         return ResponseLayout.builder()
@@ -31,6 +36,15 @@ public class ExceptionGlobal {
 
     @ExceptionHandler(AuthException.class)
     public ResponseEntity<ResponseLayout<Object>> handler(AuthException e) {
+        return ResponseLayout.builder()
+                .message(e.getMessage())
+                .success(false)
+                .code(e.getErrorCode())
+                .build()
+                .toResponseEntity();
+    }
+    @ExceptionHandler(RateLimitingException.class)
+    public ResponseEntity<ResponseLayout<Object>> handler(RateLimitingException e) {
         return ResponseLayout.builder()
                 .message(e.getMessage())
                 .success(false)

@@ -6,16 +6,14 @@ import com.ronial.internet_banking.app.mappers.UserMapper;
 import com.ronial.internet_banking.app.services.AuthService;
 import com.ronial.internet_banking.app.validations.AuthValidation;
 import com.ronial.internet_banking.common.aspects.annotations.AuthSecurity;
-import com.ronial.internet_banking.common.exceptions.ApplicationException;
+import com.ronial.internet_banking.common.aspects.annotations.RateLimiter;
 import com.ronial.internet_banking.common.exceptions.AuthException;
 import com.ronial.internet_banking.common.exceptions.AuthExceptionMessage;
-import com.ronial.internet_banking.common.exceptions.ValidationException;
 import com.ronial.internet_banking.common.utils.ResponseLayout;
 import com.ronial.internet_banking.domain.entities.future_account.User;
-import com.ronial.internet_banking.domain.entities.future_account.UserStatus;
+import com.ronial.internet_banking.infrastructure.cache.RedisConstant;
 import com.ronial.internet_banking.infrastructure.cache.RedisDistributedService;
 import com.ronial.internet_banking.infrastructure.cache.RedisKeysUtils;
-import com.ronial.internet_banking.infrastructure.cache.RedisService;
 import com.ronial.internet_banking.infrastructure.security.jwt.JwtPayload;
 import com.ronial.internet_banking.infrastructure.security.jwt.JwtService;
 import jakarta.validation.Valid;
@@ -25,10 +23,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 
@@ -70,7 +65,7 @@ public class AuthController {
                 .build();
         String token = jwtService.generate(jwtPayload);
         //Token live in 15days
-        redisDistributedService.putWithTimeLive(RedisKeysUtils.authToken(user.getId()), token, 60 * 60 * 24 * 15);
+        redisDistributedService.putWithTimeLive(RedisKeysUtils.authToken(user.getId()), token, RedisConstant.TOKEN_TIME_LIVE);
         return ResponseLayout.<CreateUserResponse>builder()
                 .data(new CreateUserResponse(response, token))
                 .code(200)
@@ -95,7 +90,7 @@ public class AuthController {
                 .build();
         String token = jwtService.generate(jwtPayload);
         //Token live in 15days
-        redisDistributedService.putWithTimeLive(RedisKeysUtils.authToken(user.getId()), token, 60 * 60 * 24 * 15);
+        redisDistributedService.putWithTimeLive(RedisKeysUtils.authToken(user.getId()), token, RedisConstant.TOKEN_TIME_LIVE);
         return ResponseLayout.<LoginResponse>builder()
                 .data(new LoginResponse(userMapper.toUserDetailsResponse(user), token))
                 .code(200)
@@ -115,6 +110,7 @@ public class AuthController {
                 .build()
                 .toResponseEntity();
     }
+
     @PostMapping("/logout")
     @AuthSecurity(checkSession = false)
     public ResponseEntity<ResponseLayout<Object>> logout(@AuthenticationPrincipal User user) {
@@ -123,6 +119,41 @@ public class AuthController {
         return ResponseLayout.builder()
                 .code(200)
                 .message("Logged out successfully")
+                .success(true)
+                .build()
+                .toResponseEntity();
+    }
+
+    @PostMapping("/rf-session")
+    @AuthSecurity
+    @RateLimiter(
+            name = "rf-session",
+            timeLimitIPAdr = 60 * 10,
+            overLimitIPMessage = "Try again after 10 minutes",
+            limitIPAdr = 1
+    )
+    public ResponseEntity<ResponseLayout<Object>> refreshSession(@AuthenticationPrincipal User user) {
+        redisDistributedService.refresh(RedisKeysUtils.authSession(user.getId()), RedisConstant.SESSION_TIME_LIVE);
+        return ResponseLayout.builder()
+                .code(200)
+                .message("Refresh session successfully")
+                .success(true)
+                .build()
+                .toResponseEntity();
+    }
+
+    @PostMapping("/resend-otp")
+    @AuthSecurity
+    @RateLimiter(
+            name = "resend-otp",
+            timeLimitIPAdr = 60,
+            limitIPAdr = 1,
+            overLimitIPMessage = "Try again after 1 minute"
+    )
+    public ResponseEntity<ResponseLayout<Object>> resendOTP() {
+        return ResponseLayout.builder()
+                .code(200)
+                .message("Resend OTP successfully")
                 .success(true)
                 .build()
                 .toResponseEntity();
